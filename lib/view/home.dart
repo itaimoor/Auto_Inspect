@@ -312,6 +312,8 @@ class _HomeState extends State<Home> {
                             // loaded = true;
 
                             setState(() {});
+                            //abc
+
                             // var fileName =
                             //     basename(galleryPicController.picPath.value);
                             // var des = 'images/$fileName';
