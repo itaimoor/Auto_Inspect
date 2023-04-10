@@ -346,6 +346,7 @@ class _HomeState extends State<Home> {
 
   Future<void> uploadImage(File imageFile) async {
     // Create a multipart request
+
     var request = http.MultipartRequest(
         'POST', Uri.parse('http://saqib0494.pythonanywhere.com/'));
 
