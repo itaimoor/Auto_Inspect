@@ -1,0 +1,2 @@
+0 Defected
+1 Un-Defected
