@@ -297,7 +297,7 @@ class _HomeState extends State<Home> {
                                 "Please Select a picture to start the process");
                           } else {
                             loading.isLoading(true);
-                            loading.loadingContent("Uploading Picture...");
+                            loading.loadingContent("Fetching Results...");
 
                             await uploadImage(
                                 File(galleryPicController.picPath.value));
@@ -367,12 +367,43 @@ class _HomeState extends State<Home> {
           "No Defects", "No Defect Detected in the Surgical Instrument");
     } else if (response.statusCode == 203) {
       print('Defect Found');
-      var responseData = await response.stream.bytesToString();
-      decodeImage = base64.decode(responseData);
+      var responseData = await http.Response.fromStream(response);
+
+      final result = jsonDecode(responseData.body) as Map<String, dynamic>;
+      decodeImage = base64.decode(result['image']);
+
+      String text = result['text'];
+      text = text.replaceAll('[', '');
+      text = text.replaceAll(']', '');
+      text = text.replaceAll('\'', '');
+      text = text.replaceAll(' ', '');
+
+      List results = text.split(',');
+
+      int count = 0;
+
+      List<List> finalresults = [[]];
+      List row = [];
+      for (int i = 0; i < results.length; i++) {
+        row.add(results[i]);
+        count += 1;
+
+        if (count == 3) {
+          count = 0;
+          print(row);
+          finalresults.add(row);
+          row = [];
+        }
+      }
+
+      print(finalresults);
+
+      // print(result['text']);
 
       Get.to(
         () => Faulty(
           decodeImage: decodeImage,
+          results: finalresults,
         ),
         transition: Transition.rightToLeft,
       );
