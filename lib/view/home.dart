@@ -1,7 +1,7 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:auto_inspect/view/calibration.dart';
 import 'package:auto_inspect/view/faulty.dart';
-import 'package:flutter_tflite/flutter_tflite.dart';
 
 import 'package:auto_inspect/controller/obsController.dart';
 import 'package:auto_inspect/controller/selectImageController.dart';
@@ -28,50 +28,6 @@ class Home extends StatefulWidget {
 }
 
 class _HomeState extends State<Home> {
-  loadModel() async {
-    String? res = await Tflite.loadModel(
-        model: "flutter_assets/assets/model.tflite",
-        labels: "flutter_assets/assets/labels.txt",
-        numThreads: 1, // defaults to 1
-        isAsset:
-            true, // defaults to true, set to false to load resources outside assets
-        useGpuDelegate:
-            false // defaults to false, set to true to use GPU delegate
-        );
-  }
-
-  runModel(File pathfile) async {
-    String? res = await Tflite.loadModel(
-        model: "flutter_assets/assets/model.tflite",
-        labels: "flutter_assets/assets/labels.txt",
-        numThreads: 1, // defaults to 1
-        isAsset:
-            true, // defaults to true, set to false to load resources outside assets
-        useGpuDelegate:
-            false // defaults to false, set to true to use GPU delegate
-        );
-
-    var recognitions = await Tflite.runModelOnImage(
-        path: pathfile.path,
-        imageMean: 127.5,
-        imageStd: 127.5,
-        threshold: 0.35, // defaults to 0.1
-        asynch: true // defaults to true
-        );
-
-    var result = "";
-
-    recognitions!.forEach((response) {
-      result += response["label"] +
-          " " +
-          (response['confidence'] as double).toStringAsFixed(2) +
-          "\n\n";
-    });
-
-    print("printing results...........");
-    print(result);
-  }
-
   var orange = Colors.orange[900];
   var galleryPicController = picController();
 
@@ -83,10 +39,16 @@ class _HomeState extends State<Home> {
 
   var decodeImage;
 
+  var color = Colors.grey.withOpacity(0.2);
+
+  var calibration = false.obs;
+
+  TextEditingController calib = TextEditingController();
+
   @override
   void initState() {
+    calib.text = '0.10366111849170036';
     super.initState();
-    loadModel();
   }
 
   Widget build(BuildContext context) {
@@ -129,219 +91,259 @@ class _HomeState extends State<Home> {
           ),
         ],
       ),
-      body: Stack(
+      body: ListView(
+        padding: EdgeInsets.all(15),
         children: [
           SingleChildScrollView(
             physics: const BouncingScrollPhysics(),
             child: SafeArea(
-              child: Padding(
-                padding: EdgeInsets.symmetric(
-                    horizontal: context.height * 0.02,
-                    vertical: context.height * 0.02),
-                child: Center(
-                  child: Column(
-                    children: [
-                      Text(
-                        "Get Started",
-                        style: GoogleFonts.poppins(
-                            fontSize: 18,
-                            fontWeight: FontWeight.w500,
-                            height: 0.9),
-                      ),
-                      SizedBox(height: 25),
-                      Obx(
-                        () => Container(
-                          padding: EdgeInsets.all(10),
-                          height: context.height * .7,
-                          width: context.width,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: InkWell(
-                            onTap: () async {
-                              Get.defaultDialog(
-                                  title: "Source",
-                                  middleText: "Select Image Source",
-                                  actions: [
-                                    InkWell(
-                                      onTap: () async {
-                                        await galleryPicController
-                                            .selectFromCamera(context);
-                                        Get.back();
-                                        // setState(() {});
-                                      },
-                                      child: buildButtonTile(context, "Camera"),
+              child: Center(
+                child: Column(
+                  children: [
+                    Text(
+                      "Get Started",
+                      style: GoogleFonts.poppins(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                          height: 0.9),
+                    ),
+                    SizedBox(height: 25),
+                    Obx(
+                      () => Container(
+                        height: context.height * .5,
+                        width: context.width,
+                        decoration: BoxDecoration(
+                          color: color,
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: InkWell(
+                          onTap: () async {
+                            Get.defaultDialog(
+                                title: "Source",
+                                middleText: "Select Image Source",
+                                actions: [
+                                  InkWell(
+                                    onTap: () async {
+                                      await galleryPicController
+                                          .selectFromCamera(context);
+                                      Get.back();
+                                      // setState(() {});
+                                    },
+                                    child: buildButtonTile(context, "Camera"),
+                                  ),
+                                  InkWell(
+                                    onTap: () async {
+                                      await galleryPicController
+                                          .selectFromGallery(context);
+                                      Get.back();
+                                      if (galleryPicController
+                                          .picPath.isNotEmpty) {
+                                        color = Colors.transparent;
+                                      }
+                                      // setState(() {});
+                                    },
+                                    child: buildButtonTile(context, "Gallery"),
+                                  ),
+                                ]);
+                          },
+                          child: (galleryPicController.picPath.isEmpty)
+                              ? Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.cloud_upload, size: 70),
+                                    SizedBox(height: 5),
+                                    Text(
+                                      "Upload Image for",
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.w500,
+                                      ),
                                     ),
-                                    InkWell(
-                                      onTap: () async {
-                                        await galleryPicController
-                                            .selectFromGallery(context);
-                                        Get.back();
-                                        // setState(() {});
-                                      },
-                                      child:
-                                          buildButtonTile(context, "Gallery"),
+                                    Text(
+                                      "Magic",
+                                      style: GoogleFonts.poppins(
+                                        fontSize: 18,
+                                        color: orange,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
-                                  ]);
-                            },
-                            child: (galleryPicController.picPath.isEmpty)
-                                ? Column(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(Icons.cloud_upload, size: 70),
-                                      SizedBox(height: 5),
-                                      Text(
-                                        "Upload Image for",
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w500,
-                                        ),
-                                      ),
-                                      Text(
-                                        "Magic",
-                                        style: GoogleFonts.poppins(
-                                          fontSize: 18,
-                                          color: orange,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  )
-                                : ClipRRect(
-                                    borderRadius: BorderRadius.circular(20),
-                                    child: InteractiveViewer(
-                                      child: Image.file(
-                                        File(
-                                            galleryPicController.picPath.value),
-                                      ),
+                                  ],
+                                )
+                              : ClipRRect(
+                                  borderRadius: BorderRadius.circular(20),
+                                  child: InteractiveViewer(
+                                    child: Image.file(
+                                      File(galleryPicController.picPath.value),
                                     ),
                                   ),
-                          ),
+                                ),
                         ),
                       ),
-                      // SizedBox(height: 40),
-                      // Container(
-                      //   padding: EdgeInsets.all(10),
-                      //   constraints:
-                      //       BoxConstraints(maxHeight: context.height * .35),
-                      //   width: context.width,
-                      //   decoration: BoxDecoration(
-                      //     color: Colors.grey.withOpacity(0.2),
-                      //     borderRadius: BorderRadius.circular(20),
-                      //   ),
-                      //   child: SingleChildScrollView(
-                      //     child: Column(
-                      //       crossAxisAlignment: CrossAxisAlignment.center,
-                      //       children: [
-                      //         Text(
-                      //           "Results",
-                      //           style: GoogleFonts.poppins(
-                      //             fontSize: 20,
-                      //             color: orange,
-                      //             fontWeight: FontWeight.w500,
-                      //           ),
-                      //         ),
-                      //         SizedBox(height: 20),
-                      //         buildResultTile("Faulty", "Yes"),
-                      //         Divider(),
-                      //         buildResultTile("Faults Count", "4"),
-                      //         Divider(),
-                      //         buildResultTile("Confidence", "60"),
-                      //         Divider(),
-                      //         buildResultTile("Accuracy", "98%"),
-                      //         Divider(),
-                      //         buildResultTile("Accuracy", "98%"),
-                      //         Divider(),
-                      //         buildResultTile("Accuracy", "98%"),
-                      //         Divider(),
-                      //         buildResultTile("Accuracy", "98%"),
-                      //         Divider(),
-                      //         buildResultTile("Accuracy", "98%"),
-                      //         Divider(),
-                      //         buildResultTile("Accuracy", "98%"),
-                      //         Divider(),
-                      //       ],
-                      //     ),
-                      //   ),
-                      // ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
             ),
           ),
-          Padding(
-            padding: EdgeInsets.symmetric(
-                horizontal: context.height * 0.02,
-                vertical: context.height * 0.02),
-            child: Align(
-              alignment: Alignment.bottomCenter,
-              child: Obx(
-                () => loading.isLoading.value
-                    ? Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          CircularProgressIndicator(
-                            valueColor: AlwaysStoppedAnimation(orange),
-                          ),
-                          SizedBox(width: 20),
-                          Text(loading.loadingContent.value)
-                        ],
-                      )
-                    : InkWell(
-                        onTap: () async {
-                          if (galleryPicController.picPath.isEmpty) {
-                            Get.snackbar("No Picture Selected",
-                                "Please Select a picture to start the process");
-                          } else {
-                            loading.isLoading(true);
-                            loading.loadingContent("Fetching Results...");
-
-                            await uploadImage(
-                                File(galleryPicController.picPath.value));
-
-                            // myImg = await drawRectangle(
-                            //     File(galleryPicController.picPath.value),
-                            //     10,
-                            //     10,
-                            //     100,
-                            //     100);
-                            //
-                            // loaded = true;
-
-                            setState(() {});
-                            //abc
-
-                            // var fileName =
-                            //     basename(galleryPicController.picPath.value);
-                            // var des = 'images/$fileName';
-                            // Reference ref =
-                            //     FirebaseStorage.instance.ref().child(des);
-                            // await ref.putFile(
-                            //     File(galleryPicController.picPath.value));
-                            // String picLink = await ref.getDownloadURL();
-                            //
-                            // loading.loadingContent("Logging Picture...");
-                            //
-                            // CollectionReference Cref = await FirebaseFirestore
-                            //     .instance
-                            //     .collection("Images");
-                            // Map<String, String?> data = {
-                            //   "imgLink": picLink,
-                            // };
-                            // await Cref.add(data);
-                            loading.isLoading(false);
-                            // Get.snackbar(
-                            //     "Picture Saved", "Picture store in database");
-                          }
-                        },
-                        child: buildButtonTile(context, "Process")),
+          SizedBox(height: 10),
+          Container(
+            alignment: Alignment.center,
+            height: 60,
+            decoration: BoxDecoration(
+              color: Colors.grey.withOpacity(0.3),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: SwitchListTile(
+              value: calibration.value,
+              activeColor: orange,
+              title: Text(
+                "Configure Calibration Scale",
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                ),
               ),
+              secondary: Icon(
+                Icons.edit,
+                color: orange,
+                size: 25,
+              ),
+              onChanged: (bool value) {
+                calibration(value);
+                setState(() {});
+              },
+            ),
+          ),
+          if (calibration.value) SizedBox(height: 10),
+          if (calibration.value)
+            inputField('Calibration', '0.1234', calib, Icons.camera, false,
+                TextInputType.number),
+          SizedBox(height: 10),
+          Align(
+            alignment: Alignment.bottomCenter,
+            child: Obx(
+              () => loading.isLoading.value
+                  ? Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        CircularProgressIndicator(
+                          valueColor: AlwaysStoppedAnimation(orange),
+                        ),
+                        SizedBox(width: 20),
+                        Text(loading.loadingContent.value)
+                      ],
+                    )
+                  : InkWell(
+                      onTap: () async {
+                        if (galleryPicController.picPath.isEmpty) {
+                          Get.snackbar("No Picture Selected",
+                              "Please Select a picture to start the process");
+                        } else {
+                          loading.isLoading(true);
+                          loading.loadingContent("Fetching Results...");
+
+                          await uploadImage(
+                              File(galleryPicController.picPath.value));
+
+                          // myImg = await drawRectangle(
+                          //     File(galleryPicController.picPath.value),
+                          //     10,
+                          //     10,
+                          //     100,
+                          //     100);
+                          //
+                          // loaded = true;
+
+                          setState(() {});
+                          //abc
+
+                          // var fileName =
+                          //     basename(galleryPicController.picPath.value);
+                          // var des = 'images/$fileName';
+                          // Reference ref =
+                          //     FirebaseStorage.instance.ref().child(des);
+                          // await ref.putFile(
+                          //     File(galleryPicController.picPath.value));
+                          // String picLink = await ref.getDownloadURL();
+                          //
+                          // loading.loadingContent("Logging Picture...");
+                          //
+                          // CollectionReference Cref = await FirebaseFirestore
+                          //     .instance
+                          //     .collection("Images");
+                          // Map<String, String?> data = {
+                          //   "imgLink": picLink,
+                          // };
+                          // await Cref.add(data);
+                          loading.isLoading(false);
+                          // Get.snackbar(
+                          //     "Picture Saved", "Picture store in database");
+                        }
+                      },
+                      child: buildButtonTile(context, "Process")),
             ),
           )
         ],
+      ),
+    );
+  }
+
+  TextFormField inputField(
+    var label,
+    var hint,
+    var controller,
+    var icon,
+    var obscure,
+    var keyboardType,
+  ) {
+    return TextFormField(
+      onTapOutside: (event) => FocusManager.instance.primaryFocus?.unfocus(),
+      obscureText: obscure,
+      controller: controller,
+      keyboardType: keyboardType,
+      textCapitalization: TextCapitalization.sentences,
+      decoration: InputDecoration(
+        filled: true,
+        fillColor: Colors.grey.withOpacity(0.3),
+        labelStyle: GoogleFonts.poppins(fontSize: 16),
+        labelText: label,
+        hintText: hint,
+        floatingLabelBehavior: FloatingLabelBehavior.never,
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 32, vertical: 20),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Colors.transparent),
+          gapPadding: 10,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(20),
+          borderSide: BorderSide(color: Colors.transparent),
+          gapPadding: 10,
+        ),
+        suffixIcon: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          child: IconButton(
+            icon: Icon(
+              icon,
+            ),
+            onPressed: () async {
+              double x = await Get.to(
+                () => Calibration(),
+                transition: Transition.rightToLeft,
+              );
+              print('val=$x');
+              if (x != 0) {
+                Get.snackbar(
+                    'Camera calibration Successful', 'Calibration Factor:$x');
+                calib.text = x.toString();
+              } else {
+                Get.snackbar('Failed', 'Calibration Factor cannot be 0');
+              }
+            },
+          ),
+        ),
       ),
     );
   }
@@ -400,13 +402,20 @@ class _HomeState extends State<Home> {
 
       // print(result['text']);
 
-      Get.to(
-        () => Faulty(
-          decodeImage: decodeImage,
-          results: finalresults,
-        ),
-        transition: Transition.rightToLeft,
-      );
+      double val = double.parse(calib.text.trim());
+      if (finalresults.length > 1) {
+        Get.to(
+          () => Faulty(
+            decodeImage: decodeImage,
+            results: finalresults,
+            calib: val,
+          ),
+          transition: Transition.rightToLeft,
+        );
+      } else {
+        Get.snackbar(
+            "No Defects", "No Defect Detected in the Surgical Instrument");
+      }
 
       // Do something with the decoded image, like displaying it in a widget
       // For example, you could use the image in a `Container` widget like this:
@@ -434,26 +443,6 @@ class _HomeState extends State<Home> {
     //
     //   // print('Error: ${response.statusCode}');
     // }
-  }
-
-  Future<File> drawRectangle(
-      File imageFile, int x, int y, int width, int height) async {
-    // Read the image from the file
-    final bytes = await imageFile.readAsBytes();
-    img.Image? image = img.decodeImage(bytes);
-
-    if (image != null) {
-      // Draw the rectangle on the image
-      img.drawRect(image, x, y, width, height, img.getColor(255, 0, 0));
-
-      // Save the modified image to a new file
-      final newFile = File('${imageFile.path}_rect.jpg');
-      await newFile.writeAsBytes(img.encodeJpg(image));
-
-      return newFile;
-    } else {
-      throw Exception('Failed to read image.');
-    }
   }
 
   Row buildResultTile(String feature, String value) {
